@@ -61,8 +61,23 @@ func verify(publicKeyHex string, signatureHex string, data []byte) bool {
 	return ecdsa.VerifyASN1(publicKey, hash[:], sigBytes)
 }
 
-// handleSubmit는 클라이언트로부터 서명된 메시지를 받아 검증하고 저장하는 HTTP 핸들러입니다.
+// 모든 핸들러에서 사용할 CORS 허용 함수
+func setCORS(w http.ResponseWriter) {
+	// CORS 접근 허용
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+}
+
 func handleSubmit(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+
+	// Preflight 요청(OPTIONS) 처리
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "POST 메서드만 허용됩니다.", http.StatusMethodNotAllowed)
 		return
@@ -98,6 +113,8 @@ func handleSubmit(w http.ResponseWriter, r *http.Request) {
 
 // handleGetMessages는 저장된 모든 검증된 메시지 목록을 JSON 형태로 반환합니다.
 func handleGetMessages(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+
 	if r.Method != http.MethodGet {
 		http.Error(w, "GET 메서드만 허용됩니다.", http.StatusMethodNotAllowed)
 		return
@@ -107,11 +124,6 @@ func handleGetMessages(w http.ResponseWriter, r *http.Request) {
 	defer mu.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
-
-	// CORS 접근 허용
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
 	// 슬라이스를 직접 인코딩하면 nil일 경우 'null'이 되므로, 빈 슬라이스를 만들어 처리합니다.
 	if len(verifiedMessages) == 0 {
@@ -123,6 +135,8 @@ func handleGetMessages(w http.ResponseWriter, r *http.Request) {
 
 // handleSignTest는 키 생성, 메시지 생성, 서명 과정을 시뮬레이션하여 클라이언트에게 보여주는 학습용 핸들러입니다.
 func handleSignTest(w http.ResponseWriter, r *http.Request) {
+	setCORS(w)
+
 	// 1. 새 키 쌍 생성
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
