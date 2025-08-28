@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Go Web3 Server Test</title>
+    <style>
+        body { font-family: sans-serif; line-height: 1.6; padding: 20px; max-width: 800px; margin: auto; }
+        h1, h2 { border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        button { padding: 10px 15px; font-size: 16px; cursor: pointer; margin-right: 10px; }
+        pre { background-color: #f4f4f4; padding: 15px; border-radius: 5px; white-space: pre-wrap; word-wrap: break-word; }
+        .step { margin-bottom: 30px; }
+        .status { font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h1>Go Web3 Server Frontend Test</h1>
+
+    <div class="step">
+        <h2>Step 1: Get Signed Message Sample</h2>
+        <button id="get-btn">/sign-test 호출</button>
+        <p class="status">Response:</p>
+        <pre id="get-response">(Not called yet)</pre>
+    </div>
+
+    <div class="step">
+        <h2>Step 2: Submit for Verification</h2>
+        <button id="submit-btn" disabled> /submit 호출</button>
+        <p class="status">Response:</p>
+        <pre id="submit-response">(Waiting for Step 1)</pre>
+    </div>
+
+    <div class="step">
+        <h2>Step 3: View All Verified Messages</h2>
+        <button id="view-btn">/messages 호출</button>
+        <p class="status">Response:</p>
+        <pre id="view-response">(Not called yet)</pre>
+    </div>
+
+    <script>
+        const getBtn = document.getElementById('get-btn');
+        const submitBtn = document.getElementById('submit-btn');
+        const viewBtn = document.getElementById('view-btn');
+
+        const getResponseEl = document.getElementById('get-response');
+        const submitResponseEl = document.getElementById('submit-response');
+        const viewResponseEl = document.getElementById('view-response');
+
+        let signedMessagePayload = null;
+
+        // Step 1: /sign-test 호출
+        getBtn.addEventListener('click', async () => {
+            getResponseEl.textContent = 'Loading...';
+            try {
+                const response = await fetch('http://localhost:8080/sign-test');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+
+                signedMessagePayload = data; // 받은 데이터 저장
+                getResponseEl.textContent = JSON.stringify(data, null, 2);
+                submitBtn.disabled = false; // 2단계 버튼 활성화
+                submitResponseEl.textContent = '(Ready to submit)';
+
+            } catch (error) {
+                getResponseEl.textContent = `Error: ${error.message}`;
+            }
+        });
+
+        // Step 2: /submit 호출
+        submitBtn.addEventListener('click', async () => {
+            if (!signedMessagePayload) {
+                submitResponseEl.textContent = 'Error: No payload from Step 1.';
+                return;
+            }
+            submitResponseEl.textContent = 'Loading...';
+            try {
+                const response = await fetch('http://localhost:8080/submit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(signedMessagePayload),
+                });
+
+                const responseText = await response.text();
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status} - ${responseText}`);
+                }
+                submitResponseEl.textContent = `Success: ${responseText}`;
+
+            } catch (error) {
+                submitResponseEl.textContent = `Error: ${error.message}`;
+            }
+        });
+
+        // Step 3: /messages 호출
+        viewBtn.addEventListener('click', async () => {
+            viewResponseEl.textContent = 'Loading...';
+            try {
+                const response = await fetch('http://localhost:8080/messages');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                viewResponseEl.textContent = JSON.stringify(data, null, 2);
+
+            } catch (error) {
+                viewResponseEl.textContent = `Error: ${error.message}`;
+            }
+        });
+    </script>
+
+</body>
+</html>
